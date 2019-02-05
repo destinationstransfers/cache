@@ -1,5 +1,5 @@
 # cache [![codecov](https://codecov.io/gh/destinationstransfers/cache/branch/master/graph/badge.svg)](https://codecov.io/gh/destinationstransfers/cache) ![node](https://img.shields.io/node/v/@destinationstransfers/cache.svg) [![tested with jest](https://img.shields.io/badge/tested_with-jest-99424f.svg)](https://github.com/facebook/jest) [![license](https://img.shields.io/npm/l/@destinationstransfers/cache.svg)](https://npm.im/cacache)
-Like [cacache](https://github.com/zkat/cacache), but without localizations, tons of dependencies and using modern Node features (`async/await` and `stream.pipeline`) and with full JSDoc for VScode IntelliType.
+Like [cacache](https://github.com/zkat/cacache), but without localizations, tons of dependencies and using modern Node features (`async/await`, `fs.promises` and `stream.pipeline`) and with full JSDoc for VScode IntelliType.
 
 Uses subresource integrity control. Disk based, no extra memory caching apart of file system cache.
 
