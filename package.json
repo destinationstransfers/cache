@@ -1,5 +1,5 @@
 {
-  "name": "cache",
+  "name": "@destinationstransfers/cache",
   "version": "1.0.0",
   "description": "Fast, fault-tolerant, disk-based, data-agnostic cache.",
   "main": "index.js",
