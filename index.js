@@ -1,42 +1,242 @@
 'use strict';
 
-const get = require('./get.js');
-const ls = require('./ls.js');
-const put = require('./put.js');
-const rm = require('./rm.js');
-const tmp = require('./lib/util/tmp');
-const verify = require('./lib/verify');
-const { clearMemoized } = require('./lib/memoization');
+const assert = require('assert');
+const path = require('path');
+const ssri = require('ssri');
+const stream = require('stream');
+const {
+  mkdirSync,
+  createReadStream,
+  createWriteStream,
+  constants: { R_OK },
+} = require('fs');
+const {
+  stat,
+  unlink,
+  writeFile,
+  readFile,
+  mkdir,
+  access,
+  rename,
+} = require('fs').promises;
+const { promisify } = require('util');
+const { randomBytes } = require('crypto');
 
-const x = module.exports;
+const pipeline = promisify(stream.pipeline);
 
-x.ls = cache => ls(cache);
-x.ls.stream = cache => ls.stream(cache);
+const INTEGRITY_ALGO = 'sha512';
 
-x.get = (cache, key, opts) => get(cache, key, opts);
-x.get.byDigest = (cache, hash, opts) => get.byDigest(cache, hash, opts);
-x.get.stream = (cache, key, opts) => get.stream(cache, key, opts);
-x.get.stream.byDigest = (cache, hash, opts) =>
-  get.stream.byDigest(cache, hash, opts);
-x.get.copy = (cache, key, dest, opts) => get.copy(cache, key, dest, opts);
-x.get.copy.byDigest = (cache, hash, dest, opts) =>
-  get.copy.byDigest(cache, hash, dest, opts);
-x.get.info = (cache, key) => get.info(cache, key);
-x.get.hasContent = (cache, hash) => get.hasContent(cache, hash);
+/**
+   * @typedef {{
+      integrity: string,
+      path: string,
+      size: number,
+      time: Date,
+      metadata?: any,
+    }} CacheEntity
+   */
 
-x.put = (cache, key, data, opts) => put(cache, key, data, opts);
-x.put.stream = (cache, key, opts) => put.stream(cache, key, opts);
+/**
+ * @extends {Map<string, CacheEntity>}
+ */
+class DestCache extends Map {
+  /**
+   *
+   * @param {string} cachePath - directory where cache will be located
+   */
+  constructor(cachePath) {
+    super();
+    // ensure directory exists
+    try {
+      mkdirSync(cachePath, { recursive: true });
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+    }
+    this.cachePath = cachePath;
+  }
 
-x.rm = (cache, key) => rm.entry(cache, key);
-x.rm.all = cache => rm.all(cache);
-x.rm.entry = x.rm;
-x.rm.content = (cache, hash) => rm.content(cache, hash);
+  /**
+   *
+   * @param {string} key
+   * @param {string | Buffer} data
+   * @returns {Promise.<CacheEntity>}
+   */
+  async set(key, data, metadata = {}) {
+    const integrity = ssri.fromData(data, { algorithms: [INTEGRITY_ALGO] });
+    // store to disk
+    const filename = path.join(this.cachePath, integrity.hexDigest());
+    /** @type {CacheEntity} */
+    const entry = {
+      path: filename,
+      size: data.length,
+      integrity: integrity.toString(),
+      time: new Date(),
+      metadata,
+    };
+    try {
+      // write data to disk
+      await writeFile(filename, data, { flag: 'wx' });
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+      // check that existing data is still valid?
+      try {
+        await ssri.checkStream(createReadStream(filename), integrity);
+        super.set(key, entry);
+        return entry;
+      } catch (e) {
+        if (e.code !== 'EINTEGRITY') throw err; // some other error happening
+        // overwrite invalid data
+        await writeFile(filename, data);
+      }
+    }
 
-x.clearMemoized = () => clearMemoized();
+    super.set(key, entry);
+    return entry;
+  }
 
-x.tmp = {};
-x.tmp.mkdir = (cache, opts) => tmp.mkdir(cache, opts);
-x.tmp.withTmp = (cache, opts, cb) => tmp.withTmp(cache, opts, cb);
+  /**
+   *
+   * @param {string} key
+   */
+  async delete(key) {
+    // get current integrity
+    const entry = super.get(key);
+    const res = super.delete(key);
+    if (!entry) return res;
 
-x.verify = (cache, opts) => verify(cache, opts);
-x.verify.lastRun = cache => verify.lastRun(cache);
+    // find any other keys referring to this content
+    for (const { integrity } of this.values()) {
+      if (integrity === entry.integrity) return res;
+    }
+    // if there is no other keys referring this content - remove it
+    await unlink(entry.path);
+    return res;
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @returns {Promise.<Buffer>}
+   */
+  async get(key) {
+    if (!super.has(key)) return undefined;
+    const { path, integrity } = super.get(key);
+    const data = await readFile(path);
+    try {
+      await ssri.checkData(data, integrity);
+    } catch (err) {
+      // remove invalid data
+      if (err.code === 'EINTEGRITY') {
+        super.delete(key);
+        await unlink(path);
+      }
+      throw err;
+    }
+    return data;
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @returns {false | CacheEntity}
+   */
+  has(key) {
+    if (!super.has(key)) return false;
+    return super.get(key);
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @param {stream.Readable} stream
+   * @param {*} metadata
+   */
+  async setStream(key, stream, metadata = {}) {
+    // stream to a temporary file
+    const tempDirectory = path.join(this.cachePath, 'tmp');
+    // ensure directory exists
+    try {
+      await mkdir(tempDirectory, { recursive: true });
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+    }
+    const tmpFilename = path.join(
+      tempDirectory,
+      randomBytes(100).toString('hex'),
+    );
+
+    // streaming
+    /** @type {import('ssri').Integrity}*/
+    let integrity;
+    let size;
+    await pipeline(
+      stream,
+      ssri
+        .integrityStream({
+          algorithms: [INTEGRITY_ALGO],
+        })
+        .on('integrity', s => {
+          integrity = s;
+        })
+        .on('size', s => {
+          size = s;
+        }),
+      createWriteStream(tmpFilename, {
+        flags: 'wx',
+      }),
+    );
+
+    // check if that integrity file does not exists yet, then move it to destination
+    const filename = path.join(this.cachePath, integrity.hexDigest());
+    /** @type {CacheEntity} */
+    const entry = {
+      path: filename,
+      size,
+      integrity: integrity.toString(),
+      time: new Date(),
+      metadata,
+    };
+    try {
+      await access(filename, R_OK);
+      // just remove temp file
+      await unlink(tmpFilename);
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+      // move temp file to new location
+      await rename(tmpFilename, filename);
+    }
+    super.set(key, entry);
+    return entry;
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @returns {stream.Readable}
+   */
+  getStream(key) {
+    const entry = super.get(key);
+    if (!entry) {
+      // we will return stream and emit error
+      const s = new stream.PassThrough();
+      s.emit('error', `Requested nonexisting key ${key}`);
+      s.push(null);
+      return s;
+    }
+
+    // return stream
+    return createReadStream(entry.path)
+      .pipe(
+        ssri.integrityStream({ integrity: entry.integrity, size: entry.size }),
+      )
+      .once('error', err => {
+        assert.ifError(err);
+        // clean file on integrity or size error
+        if (err.code === 'EINTEGRITY' || err.code === 'EBADSIZE') {
+          this.delete(key);
+        }
+      });
+  }
+}
+
+module.exports = DestCache;
