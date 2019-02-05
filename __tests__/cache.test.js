@@ -2,9 +2,16 @@
 
 const path = require('path');
 const rimraf = require('rimraf');
+const stream = require('stream');
+const {
+  ReadableStreamBuffer,
+  WritableStreamBuffer,
+} = require('stream-buffers');
+const { promisify } = require('util');
 const { randomBytes } = require('crypto');
-const { ReadableStreamBuffer } = require('stream-buffers');
-const { statSync, existsSync, readFileSync } = require('fs');
+const { statSync, existsSync, writeFileSync } = require('fs');
+
+const pipeline = promisify(stream.pipeline);
 
 const Cache = require('../');
 
@@ -12,7 +19,7 @@ describe('basic cache functions', () => {
   let bigDataBuffer = randomBytes(2048);
   const cachePath = path.join(__dirname, 'test-cache');
 
-  beforeAll(() => {
+  beforeEach(() => {
     rimraf.sync(cachePath);
   });
 
@@ -52,5 +59,88 @@ describe('basic cache functions', () => {
 
     await cache.delete('key2');
     expect(existsSync(res.path)).toBeFalsy();
+  });
+
+  test('write buffer get stream and vice-versa', async () => {
+    const cache = new Cache(cachePath);
+    await cache.set('key2-1', bigDataBuffer);
+    expect(cache.has('key2-1')).toHaveProperty('path');
+    const rs = cache.getStream('key2-1');
+    expect(rs).toBeInstanceOf(stream.Readable);
+
+    // consume stream
+    const buf = [];
+    for await (const data of rs) {
+      buf.push(data);
+    }
+    expect(bigDataBuffer.compare(Buffer.concat(buf))).toBe(0);
+
+    await cache.delete('key2-1');
+  });
+
+  test('getStream must return stream even for non-existent keys', async () => {
+    const cache = new Cache(cachePath);
+    const rs = cache.getStream('byaka');
+    expect(rs).toBeNull();
+  });
+
+  test('data corruption', async () => {
+    const cache = new Cache(cachePath);
+    const res = await cache.set('testK', bigDataBuffer);
+    // corrupting data
+    writeFileSync(res.path, 'byaka buke', 'utf8');
+    await expect(cache.get('testK')).rejects.toBeDefined();
+
+    // same for stream
+    const res2 = await cache.set('test2', bigDataBuffer);
+    expect(res.path).toBe(res2.path);
+
+    const rs = cache.getStream('test2');
+    expect(rs).toBeInstanceOf(stream.Readable);
+
+    const ws = new WritableStreamBuffer();
+    await expect(pipeline(rs, ws)).resolves.toBeUndefined();
+
+    // corrupting data
+    writeFileSync(res2.path, randomBytes(2048));
+    const rs2 = cache.getStream('test2');
+    const ws2 = new WritableStreamBuffer();
+    await expect(pipeline(rs2, ws2)).rejects.toHaveProperty(
+      'code',
+      'EINTEGRITY',
+    );
+  });
+
+  test('concurency', async () => {
+    const cache = new Cache(cachePath);
+
+    const s1 = new ReadableStreamBuffer();
+    s1.push(bigDataBuffer);
+    s1.stop();
+
+    const s2 = new ReadableStreamBuffer();
+    s2.push(bigDataBuffer);
+    s2.stop();
+
+    const s3 = new ReadableStreamBuffer();
+    s3.push(bigDataBuffer);
+    s3.stop();
+
+    const res = await Promise.all([
+      cache.set('key1', bigDataBuffer),
+      cache.set('key2', bigDataBuffer),
+      cache.set('key21', bigDataBuffer),
+      cache.set('key22', bigDataBuffer),
+      cache.setStream('key3', s1),
+      cache.set('key4', bigDataBuffer),
+      cache.setStream('key5', s2),
+      cache.setStream('key1', s3),
+    ]);
+
+    expect(res).toBeInstanceOf(Array);
+    expect(res).toHaveLength(8);
+    for (const result of res) {
+      expect(result.path).toBe(res[0].path);
+    }
   });
 });

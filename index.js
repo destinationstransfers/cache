@@ -1,6 +1,5 @@
 'use strict';
 
-const assert = require('assert');
 const path = require('path');
 const ssri = require('ssri');
 const stream = require('stream');
@@ -11,7 +10,6 @@ const {
   constants: { R_OK },
 } = require('fs');
 const {
-  stat,
   unlink,
   writeFile,
   readFile,
@@ -120,18 +118,17 @@ class DestCache extends Map {
    */
   async get(key) {
     if (!super.has(key)) return undefined;
-    const { path, integrity } = super.get(key);
-    const data = await readFile(path);
-    try {
-      await ssri.checkData(data, integrity);
-    } catch (err) {
-      // remove invalid data
-      if (err.code === 'EINTEGRITY') {
-        super.delete(key);
-        await unlink(path);
-      }
+    const entry = super.get(key);
+    const data = await readFile(entry.path);
+
+    if (!ssri.checkData(data, entry.integrity)) {
+      super.delete(key);
+      await unlink(entry.path);
+      const err = new Error(`Invalid integrity for key ${key}`);
+      err.code = 'EINTEGRITY';
       throw err;
     }
+
     return data;
   }
 
@@ -217,11 +214,7 @@ class DestCache extends Map {
   getStream(key) {
     const entry = super.get(key);
     if (!entry) {
-      // we will return stream and emit error
-      const s = new stream.PassThrough();
-      s.emit('error', `Requested nonexisting key ${key}`);
-      s.push(null);
-      return s;
+      return null;
     }
 
     // return stream
@@ -230,7 +223,6 @@ class DestCache extends Map {
         ssri.integrityStream({ integrity: entry.integrity, size: entry.size }),
       )
       .once('error', err => {
-        assert.ifError(err);
         // clean file on integrity or size error
         if (err.code === 'EINTEGRITY' || err.code === 'EBADSIZE') {
           this.delete(key);
