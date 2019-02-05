@@ -1,0 +1,22 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=759670
+    // for the documentation about the jsconfig.json format
+    "compilerOptions": {
+        "allowJs": true,
+        "checkJs": true,
+        "target": "esnext",
+        "lib": [
+            "esnext",
+            "dom",
+            "dom.iterable"
+        ],
+        "resolveJsonModule": true,
+        "maxNodeModuleJsDepth": 2,
+        "moduleResolution": "node"
+    },
+    "exclude": [
+        "node_modules",
+        "**/node_modules/*",
+        "test/*"
+    ]
+}
