@@ -26,12 +26,12 @@
     "ssri": "^6.0.1"
   },
   "devDependencies": {
-    "@destinationstransfers/eslint-config": "^5.2.1",
-    "@types/ssri": "^6.0.0",
+    "@destinationstransfers/eslint-config": "5.2.1",
+    "@types/ssri": "6.0.0",
     "eslint": "latest",
-    "jest": "^24.1.0",
-    "rimraf": "^2.6.3",
-    "stream-buffers": "^3.0.2"
+    "jest": "24.1.0",
+    "rimraf": "2.6.3",
+    "stream-buffers": "3.0.2"
   },
   "jest": {
     "collectCoverage": true,
