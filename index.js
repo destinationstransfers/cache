@@ -1,6 +1,5 @@
 'use strict';
 
-const assert = require('assert');
 const path = require('path');
 const ssri = require('ssri');
 const stream = require('stream');
@@ -11,7 +10,6 @@ const {
   constants: { R_OK },
 } = require('fs');
 const {
-  stat,
   unlink,
   writeFile,
   readFile,

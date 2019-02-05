@@ -11,7 +11,6 @@ const { promisify } = require('util');
 const { randomBytes } = require('crypto');
 const { statSync, existsSync, writeFileSync } = require('fs');
 
-const finished = promisify(stream.finished);
 const pipeline = promisify(stream.pipeline);
 
 const Cache = require('../');
