@@ -2,6 +2,7 @@
 
 const path = require('path');
 const rimraf = require('rimraf');
+const ssri = require('ssri');
 const stream = require('stream');
 const {
   ReadableStreamBuffer,
@@ -12,6 +13,7 @@ const { randomBytes } = require('crypto');
 const { statSync, existsSync, writeFileSync } = require('fs');
 
 const pipeline = promisify(stream.pipeline);
+const finished = promisify(stream.finished);
 
 const Cache = require('../');
 
@@ -19,6 +21,10 @@ describe('basic cache functions', () => {
   let bigDataBuffer = randomBytes(2048);
   const cachePath = path.join(__dirname, 'test-cache');
 
+  beforeAll(() => {
+    // for debugging tests in VSCode Jest extension
+    if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
+  });
   beforeEach(() => {
     rimraf.sync(cachePath);
   });
@@ -142,5 +148,23 @@ describe('basic cache functions', () => {
     for (const result of res) {
       expect(result.path).toBe(res[0].path);
     }
+  });
+
+  test('getWriteStream', async () => {
+    const cache = new Cache(cachePath);
+    const s1 = new ReadableStreamBuffer();
+    s1.push(bigDataBuffer);
+    s1.stop();
+    const ws = cache.getWriteStream('key2');
+    expect(ws).toBeInstanceOf(stream.Writable);
+    await pipeline(s1, ws);
+    const res = cache.has('key2');
+    expect(res).toEqual(
+      expect.objectContaining({
+        time: expect.any(Date),
+        size: bigDataBuffer.byteLength,
+        integrity: ssri.fromData(bigDataBuffer).toString(),
+      }),
+    );
   });
 });
