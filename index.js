@@ -1,10 +1,12 @@
 'use strict';
 
+const assert = require('assert');
 const path = require('path');
 const ssri = require('ssri');
 const stream = require('stream');
 const {
   mkdirSync,
+  statSync,
   createReadStream,
   createWriteStream,
   constants: { R_OK },
@@ -45,6 +47,12 @@ class DestCache extends Map {
       mkdirSync(this.tempDirectory, { recursive: true });
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
+      assert.ok(
+        statSync(this.tempDirectory).isDirectory(),
+        `Unable to create ${
+          this.tempDirectory
+        } due to a file with the same name`,
+      );
     }
   }
 
