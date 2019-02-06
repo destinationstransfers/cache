@@ -1,17 +1,18 @@
 'use strict';
 
+const assert = require('assert');
 const path = require('path');
 const ssri = require('ssri');
 const stream = require('stream');
 const {
   mkdirSync,
+  statSync,
   createReadStream,
   createWriteStream,
-  constants: { R_OK },
 } = require('fs');
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
-const { unlink, writeFile, readFile, access, rename } = require('fs').promises;
+const { unlink, writeFile, readFile, rename } = require('fs').promises;
 
 const pipeline = promisify(stream.pipeline);
 
@@ -45,6 +46,12 @@ class DestCache extends Map {
       mkdirSync(this.tempDirectory, { recursive: true });
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
+      assert.ok(
+        statSync(this.tempDirectory).isDirectory(),
+        `Unable to create ${
+          this.tempDirectory
+        } due to a file with the same name`,
+      );
     }
   }
 
@@ -182,7 +189,8 @@ class DestCache extends Map {
       metadata,
     };
     try {
-      await access(filename, R_OK);
+      // check if there is a valid file in place
+      await ssri.checkStream(createReadStream(filename), integrity);
       // just remove temp file
       await unlink(tmpFilename);
     } catch (err) {
@@ -282,10 +290,10 @@ class DestCache extends Map {
       .pipe(
         ssri.integrityStream({ integrity: entry.integrity, size: entry.size }),
       )
-      .once('error', err => {
+      .once('error', async err => {
         // clean file on integrity or size error
         if (err.code === 'EINTEGRITY' || err.code === 'EBADSIZE') {
-          this.delete(key);
+          await this.delete(key);
         }
       });
   }
