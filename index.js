@@ -294,7 +294,7 @@ class DestCache extends Map {
         // clean file on integrity or size error
         if (err.code === 'EINTEGRITY' || err.code === 'EBADSIZE') {
           await this.delete(key);
-        } else throw err;
+        }
       });
   }
 }
