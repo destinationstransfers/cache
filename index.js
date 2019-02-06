@@ -9,16 +9,9 @@ const {
   createWriteStream,
   constants: { R_OK },
 } = require('fs');
-const {
-  unlink,
-  writeFile,
-  readFile,
-  mkdir,
-  access,
-  rename,
-} = require('fs').promises;
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
+const { unlink, writeFile, readFile, access, rename } = require('fs').promises;
 
 const pipeline = promisify(stream.pipeline);
 
@@ -40,17 +33,23 @@ const INTEGRITY_ALGO = 'sha512';
 class DestCache extends Map {
   /**
    *
-   * @param {string} cachePath - directory where cache will be located
+   * @param {string} cachePath - directory where cache will be located, it will be created synchronously on constructor call
    */
   constructor(cachePath) {
     super();
-    // ensure directory exists
+    this.cachePath = cachePath;
+
+    // ensure temp directory exists
+    // ensure directory exists, it will create both
     try {
-      mkdirSync(cachePath, { recursive: true });
+      mkdirSync(this.tempDirectory, { recursive: true });
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
     }
-    this.cachePath = cachePath;
+  }
+
+  get tempDirectory() {
+    return path.join(this.cachePath, 'tmp');
   }
 
   /**
@@ -143,46 +142,35 @@ class DestCache extends Map {
   }
 
   /**
-   *
-   * @param {string} key
-   * @param {stream.Readable} stream
-   * @param {*} metadata
+   * @private
    */
-  async setStream(key, stream, metadata = {}) {
+  _getTmpFileWriteStream() {
     // stream to a temporary file
-    const tempDirectory = path.join(this.cachePath, 'tmp');
-    // ensure directory exists
-    try {
-      await mkdir(tempDirectory, { recursive: true });
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-    }
     const tmpFilename = path.join(
-      tempDirectory,
+      this.tempDirectory,
       randomBytes(100).toString('hex'),
     );
+    const ws = createWriteStream(tmpFilename, {
+      flags: 'wx',
+    });
+    return { path: tmpFilename, stream: ws };
+  }
 
-    // streaming
-    /** @type {import('ssri').Integrity}*/
-    let integrity;
-    let size;
-    await pipeline(
-      stream,
-      ssri
-        .integrityStream({
-          algorithms: [INTEGRITY_ALGO],
-        })
-        .on('integrity', s => {
-          integrity = s;
-        })
-        .on('size', s => {
-          size = s;
-        }),
-      createWriteStream(tmpFilename, {
-        flags: 'wx',
-      }),
-    );
+  /**
+   * @private
+   * @param {string} tmpFilename
+   * @param {string} key
+   * @param {{ integrity?: import('ssri').Integrity, size?: number }} calcObj
+   * @param {*} [metadata]
+   * @returns {Promise.<CacheEntity>}
+   */
 
+  async _moveToCacheLocation(
+    tmpFilename,
+    key,
+    { integrity, size },
+    metadata = {},
+  ) {
     // check if that integrity file does not exists yet, then move it to destination
     const filename = path.join(this.cachePath, integrity.hexDigest());
     /** @type {CacheEntity} */
@@ -204,6 +192,78 @@ class DestCache extends Map {
     }
     super.set(key, entry);
     return entry;
+  }
+
+  /**
+   *
+   * @param {{ integrity?: import('ssri').Integrity, size?: number }} calcObj
+   * @returns {stream.Transform}
+   * @private
+   */
+  _getSsriCalcStream(calcObj) {
+    return ssri
+      .integrityStream({
+        single: true,
+        algorithms: [INTEGRITY_ALGO],
+      })
+      .once('integrity', s => {
+        calcObj.integrity = s;
+      })
+      .once('size', s => {
+        calcObj.size = s;
+      });
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @param {*} [metadata]
+   * @returns {stream.Writable}
+   */
+  getWriteStream(key, metadata = {}) {
+    const tmpFile = this._getTmpFileWriteStream();
+    const calcObj = {};
+    const calcStream = this._getSsriCalcStream(calcObj);
+
+    const mover = this._moveToCacheLocation.bind(
+      this,
+      tmpFile.path,
+      key,
+      calcObj,
+      metadata,
+    );
+    return new stream.PassThrough({
+      write(chunk, enc, cb) {
+        calcStream.write(chunk, enc, err => {
+          if (err) throw err;
+          tmpFile.stream.write(chunk, enc, cb);
+        });
+      },
+      final(cb) {
+        calcStream.once('integrity', () => {
+          tmpFile.stream.end(async () => {
+            await mover();
+            cb();
+          });
+        });
+        calcStream.emit('end');
+      },
+    });
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @param {stream.Readable} stream
+   * @param {*} metadata
+   */
+  async setStream(key, stream, metadata = {}) {
+    // streaming
+    const calcObj = {};
+    const tmpFile = this._getTmpFileWriteStream();
+    await pipeline(stream, this._getSsriCalcStream(calcObj), tmpFile.stream);
+
+    return this._moveToCacheLocation(tmpFile.path, key, calcObj, metadata);
   }
 
   /**
