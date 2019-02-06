@@ -13,12 +13,13 @@ const {
   existsSync,
   writeFileSync,
   mkdirSync,
-  constants,
+  createWriteStream,
 } = require('fs');
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
 
 const pipeline = promisify(stream.pipeline);
+const finished = promisify(stream.finished);
 
 const Cache = require('../');
 
@@ -32,6 +33,7 @@ describe('basic cache functions', () => {
   });
   beforeEach(() => {
     rimraf.sync(cachePath);
+    jest.restoreAllMocks();
   });
 
   test('set -> has -> get -> delete -> has', async () => {
@@ -288,5 +290,26 @@ describe('basic cache functions', () => {
     // write stream
     const ws = cache.getWriteStream('bb');
     expect(() => ws.write('hello', 'utf8')).toThrow('Byaka');
+  });
+
+  test('createCachingStream', async () => {
+    const cache = new Cache(cachePath);
+
+    const s1 = new ReadableStreamBuffer();
+    s1.push(bigDataBuffer);
+    s1.stop();
+
+    const ws = new WritableStreamBuffer();
+
+    await finished(s1.pipe(cache.createCachingStream('key3')).pipe(ws));
+    expect(cache.has('key3')).toEqual(
+      expect.objectContaining({
+        time: expect.any(Date),
+        size: bigDataBuffer.byteLength,
+        integrity: ssri.fromData(bigDataBuffer).toString(),
+      }),
+    );
+
+    expect(bigDataBuffer.compare(ws.getContents())).toBe(0);
   });
 });

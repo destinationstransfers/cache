@@ -155,7 +155,7 @@ class DestCache extends Map {
     // stream to a temporary file
     const tmpFilename = path.join(
       this.tempDirectory,
-      randomBytes(100).toString('hex'),
+      randomBytes(50).toString('hex'),
     );
     const ws = createWriteStream(tmpFilename, {
       flags: 'wx',
@@ -240,11 +240,51 @@ class DestCache extends Map {
       calcObj,
       metadata,
     );
-    return new stream.PassThrough({
+    return new stream.Writable({
       write(chunk, enc, cb) {
         calcStream.write(chunk, enc, err => {
           if (err) throw err;
           tmpFile.stream.write(chunk, enc, cb);
+        });
+      },
+      final(cb) {
+        calcStream.once('integrity', () => {
+          tmpFile.stream.end(async () => {
+            await mover();
+            cb();
+          });
+        });
+        calcStream.emit('end');
+      },
+    });
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @param {*} [metadata]
+   * @returns {stream.Writable}
+   */
+  createCachingStream(key, metadata) {
+    const tmpFile = this._getTmpFileWriteStream();
+    const calcObj = {};
+    const calcStream = this._getSsriCalcStream(calcObj);
+
+    const mover = this._moveToCacheLocation.bind(
+      this,
+      tmpFile.path,
+      key,
+      calcObj,
+      metadata,
+    );
+    return new stream.Transform({
+      transform(chunk, enc, cb) {
+        // this.push(chunk, enc);
+        calcStream.write(chunk, enc, err => {
+          if (err) throw err;
+          tmpFile.stream.write(chunk, enc, err => {
+            cb(err, chunk);
+          });
         });
       },
       final(cb) {
