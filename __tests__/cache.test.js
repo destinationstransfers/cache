@@ -8,12 +8,17 @@ const {
   ReadableStreamBuffer,
   WritableStreamBuffer,
 } = require('stream-buffers');
+const {
+  statSync,
+  existsSync,
+  writeFileSync,
+  mkdirSync,
+  constants,
+} = require('fs');
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
-const { statSync, existsSync, writeFileSync } = require('fs');
 
 const pipeline = promisify(stream.pipeline);
-const finished = promisify(stream.finished);
 
 const Cache = require('../');
 
@@ -166,5 +171,31 @@ describe('basic cache functions', () => {
         integrity: ssri.fromData(bigDataBuffer).toString(),
       }),
     );
+  });
+
+  test('fail to create cache tmp folder', () => {
+    // create cache directory and put `tmp` file in it,
+    // so it will be not possible to create tmp dir
+    mkdirSync(cachePath, { recursive: true });
+    writeFileSync(path.join(cachePath, 'tmp'), 'byaka', 'utf8');
+    expect(() => new Cache(cachePath)).toThrow(
+      require('assert').AssertionError,
+    );
+    // will try to create cache folder where there is a file in the middle
+    expect(() => new Cache(path.join(cachePath, 'tmp', 'here'))).toThrow(
+      'ENOTDIR',
+    );
+  });
+
+  test('must overwrite existing content with wrong sri', async () => {
+    const cache = new Cache(cachePath);
+    const sri = ssri.fromData(bigDataBuffer);
+    const filename = path.join(cachePath, sri.hexDigest());
+    writeFileSync(filename, 'byaka', 'utf8');
+    const res = await cache.set('key23', bigDataBuffer);
+    // must have the same filename
+    expect(res).toHaveProperty('path', filename);
+    // but new, correct content
+    expect(bigDataBuffer.compare(await cache.get('key23'))).toBe(0);
   });
 });
