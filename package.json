@@ -30,6 +30,7 @@
     "@types/ssri": "6.0.0",
     "eslint": "latest",
     "jest": "24.1.0",
+    "jest-junit": "^6.2.1",
     "rimraf": "2.6.3",
     "stream-buffers": "3.0.2",
     "weak": "1.0.1"
@@ -38,7 +39,12 @@
     "collectCoverage": true,
     "testEnvironment": "node",
     "verbose": true,
-    "bail": true
+    "bail": true,
+    "coverageReporters": [
+      "text",
+      "json",
+      "cobertura"
+    ]
   },
   "eslintConfig": {
     "extends": [
