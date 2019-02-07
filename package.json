@@ -38,10 +38,7 @@
     "collectCoverage": true,
     "testEnvironment": "node",
     "verbose": true,
-    "bail": true,
-    "transformIgnorePatterns": [
-      ".*"
-    ]
+    "bail": true
   },
   "eslintConfig": {
     "extends": [

@@ -57,7 +57,7 @@ describe('basic cache functions', () => {
     expect(res.size).toBe(bigDataBuffer.byteLength);
 
     expect(cache.has('key1')).toHaveProperty('integrity', expect.any(String));
-    expect(cache.has('key1')).toHaveProperty('time', expect.any(Date));
+    expect(cache.has('key1')).toHaveProperty('time', expect.any(Number));
 
     expect(bigDataBuffer.compare(await cache.get('key1'))).toBe(0);
 
@@ -171,7 +171,7 @@ describe('basic cache functions', () => {
     const res = cache.has('key2');
     expect(res).toEqual(
       expect.objectContaining({
-        time: expect.any(Date),
+        time: expect.any(Number),
         size: bigDataBuffer.byteLength,
         integrity: ssri.fromData(bigDataBuffer).toString(),
       }),
@@ -304,12 +304,25 @@ describe('basic cache functions', () => {
     await finished(s1.pipe(cache.createCachingStream('key3')).pipe(ws));
     expect(cache.has('key3')).toEqual(
       expect.objectContaining({
-        time: expect.any(Date),
+        time: expect.any(Number),
         size: bigDataBuffer.byteLength,
         integrity: ssri.fromData(bigDataBuffer).toString(),
       }),
     );
 
     expect(bigDataBuffer.compare(ws.getContents())).toBe(0);
+  });
+
+  test('persistence', async () => {
+    const cache1 = new Cache(cachePath, true);
+    expect(cache1.size).toBe(0);
+    await Promise.all([
+      cache1.set('key1', bigDataBuffer),
+      cache1.set('key2', 'test string'),
+      cache1.set('key3', 'string3'),
+    ]);
+
+    const cache2 = new Cache(cachePath, true);
+    expect(cache2).toHaveProperty('size', 3);
   });
 });
