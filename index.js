@@ -23,10 +23,12 @@ const INTEGRITY_ALGO = 'sha512';
       integrity: string,
       path: string,
       size: number,
-      time: Date,
+      time: number,
       metadata?: any,
     }} CacheEntity
    */
+
+const STATE_FILE_NAME = '.destr-cache.json';
 
 /**
  * @extends {Map<string, CacheEntity>}
@@ -35,10 +37,27 @@ class DestCache extends Map {
   /**
    *
    * @param {string} cachePath - directory where cache will be located, it will be created synchronously on constructor call
+   * @param {boolean} [persistent] - whether cache should save / restore it's state to the disk
    */
-  constructor(cachePath) {
+  constructor(cachePath, persistent = false) {
     super();
+    try {
+      mkdirSync(cachePath, { recursive: true });
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+    }
+    if (persistent) {
+      // reading previous state
+      try {
+        const initState = require(path.resolve(cachePath, STATE_FILE_NAME));
+        for (const [k, v] of initState) {
+          super.set(k, v);
+        }
+      } catch (err) {}
+    }
+
     this.cachePath = cachePath;
+    this.persistent = persistent;
 
     // ensure temp directory exists
     // ensure directory exists, it will create both
@@ -59,6 +78,15 @@ class DestCache extends Map {
     return path.join(this.cachePath, 'tmp');
   }
 
+  persist() {
+    if (!this.persistent) return;
+    return writeFile(
+      path.resolve(this.cachePath, STATE_FILE_NAME),
+      JSON.stringify([...this]),
+      'utf8',
+    );
+  }
+
   /**
    *
    * @param {string} key
@@ -74,7 +102,7 @@ class DestCache extends Map {
       path: filename,
       size: data.length,
       integrity: integrity.toString(),
-      time: new Date(),
+      time: Date.now(),
       metadata,
     };
     try {
@@ -95,6 +123,7 @@ class DestCache extends Map {
     }
 
     super.set(key, entry);
+    await this.persist();
     return entry;
   }
 
@@ -107,6 +136,7 @@ class DestCache extends Map {
     const entry = super.get(key);
     const res = super.delete(key);
     if (!entry) return res;
+    await this.persist();
 
     // find any other keys referring to this content
     for (const { integrity } of this.values()) {
@@ -155,7 +185,7 @@ class DestCache extends Map {
     // stream to a temporary file
     const tmpFilename = path.join(
       this.tempDirectory,
-      randomBytes(100).toString('hex'),
+      randomBytes(50).toString('hex'),
     );
     const ws = createWriteStream(tmpFilename, {
       flags: 'wx',
@@ -185,7 +215,7 @@ class DestCache extends Map {
       path: filename,
       size,
       integrity: integrity.toString(),
-      time: new Date(),
+      time: Date.now(),
       metadata,
     };
     try {
@@ -199,6 +229,7 @@ class DestCache extends Map {
       await rename(tmpFilename, filename);
     }
     super.set(key, entry);
+    await this.persist();
     return entry;
   }
 
@@ -240,11 +271,51 @@ class DestCache extends Map {
       calcObj,
       metadata,
     );
-    return new stream.PassThrough({
+    return new stream.Writable({
       write(chunk, enc, cb) {
         calcStream.write(chunk, enc, err => {
           if (err) throw err;
           tmpFile.stream.write(chunk, enc, cb);
+        });
+      },
+      final(cb) {
+        calcStream.once('integrity', () => {
+          tmpFile.stream.end(async () => {
+            await mover();
+            cb();
+          });
+        });
+        calcStream.emit('end');
+      },
+    });
+  }
+
+  /**
+   *
+   * @param {string} key
+   * @param {*} [metadata]
+   * @returns {stream.Writable}
+   */
+  createCachingStream(key, metadata) {
+    const tmpFile = this._getTmpFileWriteStream();
+    const calcObj = {};
+    const calcStream = this._getSsriCalcStream(calcObj);
+
+    const mover = this._moveToCacheLocation.bind(
+      this,
+      tmpFile.path,
+      key,
+      calcObj,
+      metadata,
+    );
+    return new stream.Transform({
+      transform(chunk, enc, cb) {
+        // this.push(chunk, enc);
+        calcStream.write(chunk, enc, err => {
+          if (err) throw err;
+          tmpFile.stream.write(chunk, enc, err => {
+            cb(err, chunk);
+          });
         });
       },
       final(cb) {

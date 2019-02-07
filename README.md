@@ -13,6 +13,7 @@ const Cache = require('@destinationstransfers/cache');
 const assert = require('assert');
 const { promisify } = require('util');
 const pipeline = promisify(require('stream').pipeline);
+const finished = promisify(require('stream').finished);
 
 
 async fn() {
@@ -41,6 +42,12 @@ async fn() {
         cache.getWritableStream('cache-url1', { metadata: { url } })
     );
     assert.ok(cache.has('cache-url1').metadata.url, 'Content must be in cache now with associated metadata')
+    // or intermittent caching layer
+    await finished(
+        createReadStream('oldFilename.ext')
+            .pipe(cache.createCachingStream('cachingKey'))
+            .pipe(createWriteStream('newLocation.ext'))
+    )
 }
 ```
 
