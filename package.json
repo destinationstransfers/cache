@@ -43,6 +43,7 @@
     "coverageReporters": [
       "text",
       "json",
+      "html",
       "cobertura"
     ]
   },

@@ -61,3 +61,5 @@ typings/
 .next
 
 __tests__/test-cache/*
+junit.xml
+.DS_Store
