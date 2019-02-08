@@ -10,9 +10,16 @@ const {
   createReadStream,
   createWriteStream,
 } = require('fs');
+const {
+  unlink,
+  writeFile,
+  readFile,
+  rename,
+  mkdir,
+  stat,
+} = require('fs').promises;
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
-const { unlink, writeFile, readFile, rename } = require('fs').promises;
 
 const pipeline = promisify(stream.pipeline);
 
@@ -52,11 +59,6 @@ class DestCache extends Map {
    */
   constructor(cachePath, persistent = false) {
     super();
-    try {
-      mkdirSync(cachePath, { recursive: true });
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-    }
     if (persistent) {
       // reading previous state
       try {
@@ -67,12 +69,38 @@ class DestCache extends Map {
         // eslint-disable-next-line no-empty
       } catch (err) {}
     }
-
     this.cachePath = cachePath;
     this.persistent = persistent;
+  }
 
-    // ensure temp directory exists
-    // ensure directory exists, it will create both
+  /**
+   * @private
+   */
+  async _ensureCacheDirectory() {
+    try {
+      await mkdir(this.cachePath, { recursive: true });
+    } catch (err) {
+      if (err.code !== 'EEXIST') throw err;
+      // maker sure it's really a directory
+      const st = await stat(this.cachePath);
+      assert.ok(
+        st.isDirectory(),
+        `Unable to create ${this.cachePath} due to a file with the same name`,
+      );
+    }
+  }
+
+  /**
+   * @private
+   */
+  get tempDirectory() {
+    return path.join(this.cachePath, 'tmp');
+  }
+
+  /**
+   * @private
+   */
+  _ensureTempDirectorySync() {
     try {
       mkdirSync(this.tempDirectory, { recursive: true });
     } catch (err) {
@@ -86,8 +114,14 @@ class DestCache extends Map {
     }
   }
 
-  get tempDirectory() {
-    return path.join(this.cachePath, 'tmp');
+  /**
+   * @private
+   * @param {string} file
+   */
+  async _safeUnlink(file) {
+    try {
+      await unlink(file);
+    } catch (err) {}
   }
 
   async persist() {
@@ -107,6 +141,8 @@ class DestCache extends Map {
    */
   // @ts-ignore
   async set(key, data, metadata = {}) {
+    await this._ensureCacheDirectory();
+
     const integrity = ssri.fromData(data, { algorithms: [INTEGRITY_ALGO] });
     // store to disk
     const filename = path.join(this.cachePath, integrity.hexDigest());
@@ -150,6 +186,7 @@ class DestCache extends Map {
     const entry = super.get(key);
     const res = super.delete(key);
     if (!entry) return res;
+    await this._ensureCacheDirectory();
     await this.persist();
 
     // find any other keys referring to this content
@@ -157,7 +194,7 @@ class DestCache extends Map {
       if (integrity === entry.integrity) return res;
     }
     // if there is no other keys referring this content - remove it
-    await unlink(entry.path);
+    await this._safeUnlink(entry.path);
     return res;
   }
 
@@ -174,7 +211,7 @@ class DestCache extends Map {
 
     if (!ssri.checkData(data, entry.integrity)) {
       super.delete(key);
-      await unlink(entry.path);
+      await this._safeUnlink(entry.path);
       throw new IntegrityError(`Invalid integrity for key ${key}`);
     }
 
@@ -196,6 +233,8 @@ class DestCache extends Map {
    * @private
    */
   _getTmpFileWriteStream() {
+    this._ensureTempDirectorySync();
+
     // stream to a temporary file
     const tmpFilename = path.join(
       this.tempDirectory,
@@ -236,7 +275,7 @@ class DestCache extends Map {
       // check if there is a valid file in place
       await ssri.checkStream(createReadStream(filename), integrity.toString());
       // just remove temp file
-      await unlink(tmpFilename);
+      await this._safeUnlink(tmpFilename);
     } catch (err) {
       if (err.code !== 'ENOENT') throw err;
       // move temp file to new location
