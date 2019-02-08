@@ -181,7 +181,7 @@ describe('basic cache functions', () => {
     const cache2 = new Cache(path.join(cachePath, 'tmp', 'here'));
     await expect(cache2.set('key3', bigDataBuffer)).rejects.toHaveProperty(
       'code',
-       /ENOTDIR|ENOENT/,
+      expect.stringMatching(/ENOTDIR|ENOENT/),
     );
   });
 
