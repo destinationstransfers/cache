@@ -4,7 +4,8 @@
   "description": "Fast, fault-tolerant, disk-based, data-agnostic cache.",
   "main": "index.js",
   "scripts": {
-    "test": "node --expose-gc node_modules/jest/bin/jest --detectOpenHandles --detectLeaks --notify --logHeapUsage"
+    "test": "node --expose-gc node_modules/jest/bin/jest --detectOpenHandles --detectLeaks --notify --logHeapUsage",
+    "typecheck": "tsc --p jsconfig.json"
   },
   "engines": {
     "node": ">=10.7"
@@ -27,12 +28,14 @@
   },
   "devDependencies": {
     "@destinationstransfers/eslint-config": "5.2.1",
+    "@types/node": "^10.12.22",
     "@types/ssri": "6.0.0",
     "eslint": "latest",
     "jest": "24.1.0",
     "jest-junit": "^6.2.1",
     "rimraf": "2.6.3",
     "stream-buffers": "3.0.2",
+    "typescript": "^3.3.3",
     "weak": "1.0.1"
   },
   "jest": {
