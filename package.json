@@ -10,8 +10,10 @@
     "node": ">=10.7"
   },
   "files": [
-    "index.js"
+    "index.js",
+    "index.d.ts"
   ],
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/destinationstransfers/cache.git"

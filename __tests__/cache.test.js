@@ -8,13 +8,7 @@ const {
   ReadableStreamBuffer,
   WritableStreamBuffer,
 } = require('stream-buffers');
-const {
-  statSync,
-  existsSync,
-  writeFileSync,
-  mkdirSync,
-  createWriteStream,
-} = require('fs');
+const { existsSync, writeFileSync, mkdirSync } = require('fs');
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
 
@@ -40,10 +34,6 @@ describe('basic cache functions', () => {
     expect(existsSync(cachePath)).toBeFalsy();
 
     const cache = new Cache(cachePath);
-    // it must create cache directory sync
-    expect(statSync(cachePath).isDirectory()).toBeTruthy();
-    // but must not throw if another instance want to use the same dir
-    expect(() => new Cache(cachePath)).not.toThrow();
 
     // asks for unknown key
     await expect(cache.get('byaka')).resolves.toBeUndefined();
@@ -178,16 +168,19 @@ describe('basic cache functions', () => {
     );
   });
 
-  test('fail to create cache tmp folder', () => {
+  test('fail to create cache tmp folder', async () => {
     // create cache directory and put `tmp` file in it,
     // so it will be not possible to create tmp dir
     mkdirSync(cachePath, { recursive: true });
     writeFileSync(path.join(cachePath, 'tmp'), 'byaka', 'utf8');
-    expect(() => new Cache(cachePath)).toThrow(
+    const cache = new Cache(cachePath);
+    expect(() => cache.createCachingStream('key2')).toThrow(
       require('assert').AssertionError,
     );
     // will try to create cache folder where there is a file in the middle
-    expect(() => new Cache(path.join(cachePath, 'tmp', 'here'))).toThrow(
+    const cache2 = new Cache(path.join(cachePath, 'tmp', 'here'));
+    await expect(cache2.set('key3', bigDataBuffer)).rejects.toHaveProperty(
+      'code',
       'ENOTDIR',
     );
   });
@@ -196,6 +189,7 @@ describe('basic cache functions', () => {
     const cache = new Cache(cachePath);
     const sri = ssri.fromData(bigDataBuffer);
     const filename = path.join(cachePath, sri.hexDigest());
+    await cache._ensureCacheDirectory();
     writeFileSync(filename, 'byaka', 'utf8');
     const res = await cache.set('key23', bigDataBuffer);
     // must have the same filename
@@ -213,7 +207,7 @@ describe('basic cache functions', () => {
 
     // create folder where we expect to move file
     const sri = ssri.fromData(bigDataBuffer);
-    mkdirSync(path.join(cachePath, sri.hexDigest()));
+    mkdirSync(path.join(cachePath, sri.hexDigest()), { recursive: true });
 
     await expect(cache.setStream('key2', s1)).rejects.toHaveProperty(
       'code',
