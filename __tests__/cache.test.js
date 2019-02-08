@@ -188,7 +188,7 @@ describe('basic cache functions', () => {
     );
     // will try to create cache folder where there is a file in the middle
     expect(() => new Cache(path.join(cachePath, 'tmp', 'here'))).toThrow(
-      'ENOTDIR',
+      /ENOTDIR|ENOENT/,
     );
   });
 

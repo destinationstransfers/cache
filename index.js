@@ -64,9 +64,8 @@ class DestCache extends Map {
         for (const [k, v] of initState) {
           super.set(k, v);
         }
-      } catch (err) {
-        console.warn(err);
-      }
+        // eslint-disable-next-line no-empty
+      } catch (err) {}
     }
 
     this.cachePath = cachePath;
@@ -200,7 +199,7 @@ class DestCache extends Map {
     // stream to a temporary file
     const tmpFilename = path.join(
       this.tempDirectory,
-      randomBytes(50).toString('hex'),
+      randomBytes(30).toString('hex'),
     );
     const ws = createWriteStream(tmpFilename, {
       flags: 'wx',
