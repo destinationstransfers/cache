@@ -18,6 +18,7 @@ jobs:
 
       - run: npm ci
       # run tests!
+      - run: npm run typecheck
       - run: npm test
 
       - codecov/upload:

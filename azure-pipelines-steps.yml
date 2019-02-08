@@ -7,6 +7,9 @@ steps:
 - script: npm ci
   displayName: 'npm install'
 
+- script: npm run typecheck
+  displayName: "TypeScript type checking"
+
 - script: npm test -- --ci --reporters=default --reporters=jest-junit
   displayName: 'Run Jest'
 

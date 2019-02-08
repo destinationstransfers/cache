@@ -37,6 +37,17 @@ const INTEGRITY_ALGO = 'sha512';
 
 const STATE_FILE_NAME = '.destr-cache.json';
 
+class IntegrityError extends Error {
+  /**
+   *
+   * @param {string} msg
+   */
+  constructor(msg) {
+    super(msg);
+    this.code = 'EINTEGRITY';
+  }
+}
+
 /**
  * @extends {Map<string, CacheEntity>}
  */
@@ -55,6 +66,7 @@ class DestCache extends Map {
         for (const [k, v] of initState) {
           super.set(k, v);
         }
+        // eslint-disable-next-line no-empty
       } catch (err) {}
     }
     this.cachePath = cachePath;
@@ -112,9 +124,9 @@ class DestCache extends Map {
     } catch (err) {}
   }
 
-  persist() {
+  async persist() {
     if (!this.persistent) return;
-    return writeFile(
+    await writeFile(
       path.resolve(this.cachePath, STATE_FILE_NAME),
       JSON.stringify([...this]),
       'utf8',
@@ -127,6 +139,7 @@ class DestCache extends Map {
    * @param {string | Buffer} data
    * @returns {Promise.<CacheEntity>}
    */
+  // @ts-ignore
   async set(key, data, metadata = {}) {
     await this._ensureCacheDirectory();
 
@@ -167,6 +180,7 @@ class DestCache extends Map {
    *
    * @param {string} key
    */
+  // @ts-ignore
   async delete(key) {
     // get current integrity
     const entry = super.get(key);
@@ -187,8 +201,9 @@ class DestCache extends Map {
   /**
    *
    * @param {string} key
-   * @returns {Promise.<Buffer>}
+   * @returns {Promise.<Buffer | undefined>}
    */
+  // @ts-ignore
   async get(key) {
     if (!super.has(key)) return undefined;
     const entry = super.get(key);
@@ -197,9 +212,7 @@ class DestCache extends Map {
     if (!ssri.checkData(data, entry.integrity)) {
       super.delete(key);
       await this._safeUnlink(entry.path);
-      const err = new Error(`Invalid integrity for key ${key}`);
-      err.code = 'EINTEGRITY';
-      throw err;
+      throw new IntegrityError(`Invalid integrity for key ${key}`);
     }
 
     return data;
@@ -210,6 +223,7 @@ class DestCache extends Map {
    * @param {string} key
    * @returns {false | CacheEntity}
    */
+  // @ts-ignore
   has(key) {
     if (!super.has(key)) return false;
     return super.get(key);
@@ -224,7 +238,7 @@ class DestCache extends Map {
     // stream to a temporary file
     const tmpFilename = path.join(
       this.tempDirectory,
-      randomBytes(50).toString('hex'),
+      randomBytes(20).toString('hex'),
     );
     const ws = createWriteStream(tmpFilename, {
       flags: 'wx',
@@ -259,7 +273,7 @@ class DestCache extends Map {
     };
     try {
       // check if there is a valid file in place
-      await ssri.checkStream(createReadStream(filename), integrity);
+      await ssri.checkStream(createReadStream(filename), integrity.toString());
       // just remove temp file
       await this._safeUnlink(tmpFilename);
     } catch (err) {
@@ -400,12 +414,18 @@ class DestCache extends Map {
       .pipe(
         ssri.integrityStream({ integrity: entry.integrity, size: entry.size }),
       )
-      .once('error', async err => {
-        // clean file on integrity or size error
-        if (err.code === 'EINTEGRITY' || err.code === 'EBADSIZE') {
-          await this.delete(key);
-        }
-      });
+      .once(
+        'error',
+        /**
+         * @param {NodeJS.ErrnoException} err
+         */
+        async err => {
+          // clean file on integrity or size error
+          if (err.code === 'EINTEGRITY' || err.code === 'EBADSIZE') {
+            await this.delete(key);
+          }
+        },
+      );
   }
 }
 
