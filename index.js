@@ -238,7 +238,7 @@ class DestCache extends Map {
     // stream to a temporary file
     const tmpFilename = path.join(
       this.tempDirectory,
-      randomBytes(30).toString('hex'),
+      randomBytes(20).toString('hex'),
     );
     const ws = createWriteStream(tmpFilename, {
       flags: 'wx',
