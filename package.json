@@ -33,7 +33,7 @@
     "@types/node": "10.12.26",
     "@types/ssri": "6.0.0",
     "eslint": "latest",
-    "jest": "24.1.0",
+    "jest": "24.5.0",
     "jest-junit": "6.3.0",
     "rimraf": "2.6.3",
     "stream-buffers": "3.0.2",
