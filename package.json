@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@destinationstransfers/eslint-config": "6.4.0",
-    "@types/node": "10.12.26",
+    "@types/node": "10.14.1",
     "@types/ssri": "6.0.0",
     "eslint": "latest",
     "jest": "24.5.0",
