@@ -21,7 +21,6 @@ const Cache = require('../');
 
 function removeDirTree(dirPath) {
   // https://stackoverflow.com/questions/18052762/remove-directory-which-is-not-empty
-  console.warn('Deleting %s', dirPath);
   const removeDirCmd =
     process.platform === 'win32' ? 'rmdir /S /Q ' : 'rm -rf ';
   if (process.platform === 'win32') {
