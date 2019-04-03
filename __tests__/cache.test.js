@@ -5,6 +5,7 @@ const stream = require('stream');
 const { existsSync, writeFileSync, mkdirSync } = require('fs');
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
+const { execSync } = require('child_process');
 
 const {
   ReadableStreamBuffer,
@@ -27,10 +28,17 @@ describe('basic cache functions', () => {
     // for debugging tests in VSCode Jest extension
     if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
   });
-  beforeEach(async () => {
-    const deletedPaths = await del([cachePath]);
-    if (Array.isArray(deletedPaths) && deletedPaths.length)
-      console.warn('Deleted %s', deletedPaths.join(','));
+  beforeEach(() => {
+    // https://stackoverflow.com/questions/18052762/remove-directory-which-is-not-empty
+    if (existsSync(cachePath)) {
+      console.warn('Deleting %s', cachePath);
+      const removeDirCmd =
+        process.platform === 'win32' ? 'rmdir /s /q ' : 'rm -rf ';
+      execSync(
+        removeDirCmd + '"' + cachePath + '"',
+        console.error.bind(console),
+      );
+    }
     jest.restoreAllMocks();
   });
 
