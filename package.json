@@ -29,6 +29,9 @@
   "dependencies": {
     "ssri": "^6.0.1"
   },
+  "optionalDependencies": {
+    "weak": "1.0.1"
+  },
   "devDependencies": {
     "@destinationstransfers/eslint-plugin": "^2.2.3",
     "@types/jest": "^24.0.11",
@@ -40,8 +43,7 @@
     "jest": "24.7.0",
     "jest-junit": "6.3.0",
     "stream-buffers": "3.0.2",
-    "typescript": "3.4.1",
-    "weak": "1.0.1"
+    "typescript": "3.4.1"
   },
   "jest": {
     "collectCoverage": true,

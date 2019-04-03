@@ -18,7 +18,15 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.symlinks true
         displayName: 'Preserve LF endings and symbolic links on check out'
-      - template: azure-pipelines-steps.yml
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '11.x'
+        displayName: 'Install Node.js'
+      - script: npm ci
+        # skip weak
+        displayName: 'npm install --no-package-lock --no-optional'
+      - script: node --expose-gc node_modules/jest/bin/jest --logHeapUsage --ci --reporters=default --reporters=jest-junit
+        displayName: 'Run Jest'
 
   - job: macOS
     pool:
