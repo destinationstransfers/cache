@@ -28,7 +28,9 @@ describe('basic cache functions', () => {
     if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
   });
   beforeEach(async () => {
-    await del(cachePath);
+    const deletedPaths = await del([cachePath]);
+    if (Array.isArray(deletedPaths) && deletedPaths.length)
+      console.warn('Deleted %s', deletedPaths.join(','));
     jest.restoreAllMocks();
   });
 
