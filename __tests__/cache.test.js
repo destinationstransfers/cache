@@ -338,9 +338,9 @@ describe('basic cache functions', () => {
     const cache1 = new Cache(cachePath, true);
     expect(cache1.size).toBe(0);
     await Promise.all([
-      cache1.set('key1', bigDataBuffer),
-      cache1.set('key2', 'test string'),
-      cache1.set('key3', 'string3'),
+      cache1.set('key1', randomBytes(2048)),
+      cache1.set('key2', randomBytes(2048)),
+      cache1.set('key3', randomBytes(2048)),
     ]);
 
     const cache2 = new Cache(cachePath, true);
