@@ -25,8 +25,13 @@ jobs:
       - script: npm install --no-package-lock --no-optional
         # skip weak
         displayName: 'npm install'
-      - script: node --expose-gc node_modules/jest/bin/jest --logHeapUsage --ci --reporters=default --reporters=jest-junit
+      - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default
         displayName: 'Run Jest'
+      - task: PublishCodeCoverageResults@1
+        inputs:
+          codeCoverageTool: Cobertura
+          summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/cobertura-coverage.xml'
+          reportDirectory: '$(System.DefaultWorkingDirectory)/**/coverage'
 
   - job: macOS
     pool:
