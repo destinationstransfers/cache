@@ -189,11 +189,11 @@ class DestCache extends Map {
       metadata,
     };
 
-    // will try 4 times
+    // will try 6 times
     let lastError = '';
     let writeFlag = 'wx'; // fail if file exists
     let i = 0;
-    for (i; i < 5; i++)
+    for (i; i < 6; i++)
       try {
         // write data to disk
         await writeFile(filename, data, { flag: writeFlag });
@@ -215,8 +215,10 @@ class DestCache extends Map {
         else if (
           lastError === 'EMFILE' ||
           (process.platform === 'win32' && lastError === 'EPERM')
-        )
+        ) {
+          writeFlag = 'w';
           await new Promise(resolve => setTimeout(resolve, i * 1000));
+        }
       }
 
     if (lastError)
