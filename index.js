@@ -188,23 +188,40 @@ class DestCache extends Map {
       time: Date.now(),
       metadata,
     };
-    try {
-      // write data to disk
-      await writeFile(filename, data, { flag: 'wx' });
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-      // check that existing data is still valid?
-      try {
-        await ssri.checkStream(createReadStream(filename), integrity);
-        super.set(key, entry);
-        return entry;
-      } catch (e) {
-        if (e.code !== 'EINTEGRITY') throw err; // some other error happening
-        // overwrite invalid data
-        await writeFile(filename, data);
-      }
-    }
 
+    // will try 3 times
+    let lastError = '';
+    let writeFlag = 'wx'; // fail if file exists
+    for (let i = 0; i < 3; i++)
+      try {
+        // write data to disk
+        await writeFile(filename, data, { flag: writeFlag });
+        lastError = '';
+        break;
+      } catch (err) {
+        lastError = err.code;
+        // check that existing data is still valid?
+        if (lastError === 'EEXIST')
+          try {
+            await ssri.checkStream(createReadStream(filename), integrity);
+            lastError = '';
+            break;
+          } catch (e) {
+            lastError = e.code;
+            // overwrite invalid data
+            writeFlag = 'w'; // open for writing
+          }
+        else if (
+          lastError === 'EMFILE' ||
+          (process.platform === 'win32' && lastError === 'EPERM')
+        )
+          await new Promise(resolve => setTimeout(resolve, i * 1000));
+      }
+
+    if (lastError)
+      throw new Error(
+        `Failed to write key ${key} to ${filename}, error code: ${lastError}`,
+      );
     super.set(key, entry);
     await this.persist();
     return entry;
