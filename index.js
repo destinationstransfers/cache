@@ -162,7 +162,7 @@ class DestCache extends Map {
       // write data to disk
       await writeFile(filename, data, { flag: 'wx' });
     } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
+      if (err.code !== 'EEXIST' && err.code !== 'EPERM') throw err;
       // check that existing data is still valid?
       try {
         await ssri.checkStream(createReadStream(filename), integrity);
