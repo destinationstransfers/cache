@@ -27,11 +27,7 @@ jobs:
         displayName: 'npm install'
       - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default
         displayName: 'Run Jest'
-      - task: PublishCodeCoverageResults@1
-        inputs:
-          codeCoverageTool: Cobertura
-          summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/cobertura-coverage.xml'
-          reportDirectory: '$(System.DefaultWorkingDirectory)/**/coverage'
+      - script: 'npx codecov'
 
   - job: macOS
     pool:
