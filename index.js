@@ -17,7 +17,6 @@ const {
   rename,
   mkdir,
   stat,
-  access,
 } = require('fs').promises;
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
@@ -131,11 +130,27 @@ class DestCache extends Map {
 
   async persist() {
     if (!this.persistent) return;
-    await writeFile(
-      path.resolve(this.cachePath, STATE_FILE_NAME),
-      JSON.stringify([...this]),
-      'utf8',
-    );
+    // retry to times
+    for (let i = 0; i < 3; i++) {
+      try {
+        await writeFile(
+          path.resolve(this.cachePath, STATE_FILE_NAME),
+          JSON.stringify([...this]),
+          'utf8',
+        );
+        break;
+      } catch (err) {
+        if (
+          err.code === 'EMFILE' ||
+          (process.platform === 'win32' && err.code === 'EPERM')
+        ) {
+          // sleep and continue
+          await new Promise(resolve => setTimeout(resolve, i * 1000));
+          continue;
+        }
+        break;
+      }
+    }
   }
 
   /**
