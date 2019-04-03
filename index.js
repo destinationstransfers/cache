@@ -189,10 +189,10 @@ class DestCache extends Map {
       metadata,
     };
 
-    // will try 3 times
+    // will try 4 times
     let lastError = '';
     let writeFlag = 'wx'; // fail if file exists
-    for (let i = 0; i < 3; i++)
+    for (let i = 0; i < 4; i++)
       try {
         // write data to disk
         await writeFile(filename, data, { flag: writeFlag });
