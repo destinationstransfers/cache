@@ -32,7 +32,7 @@ describe('basic cache functions', () => {
     if (existsSync(cachePath)) {
       console.warn('Deleting %s', cachePath);
       const removeDirCmd =
-        process.platform === 'win32' ? 'rmdir /s /q ' : 'rm -rf ';
+        process.platform === 'win32' ? 'rmdir /S /Q ' : 'rm -rf ';
       execSync(
         removeDirCmd + '"' + cachePath + '"',
         console.error.bind(console),
