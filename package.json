@@ -29,7 +29,7 @@
     "ssri": "^6.0.1"
   },
   "devDependencies": {
-    "@destinationstransfers/eslint-config": "6.4.0",
+    "@destinationstransfers/eslint-config": "7.0.8",
     "@types/node": "10.14.4",
     "@types/ssri": "6.0.0",
     "eslint": "latest",
