@@ -25,10 +25,9 @@ jobs:
       - script: npm install --no-package-lock --no-optional
         # skip weak
         displayName: 'npm install'
-      - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default
+      - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default --coverage
         displayName: 'Run Jest'
-      - script: 'npx codecov'
-        condition: succeededOrFailed()
+      - script: npx codecov -f "./coverage/coverage-final.json" -t $(CODECOV_TOKEN)
         displayName: 'Upload to Codecov'
 
   - job: macOS
