@@ -281,7 +281,7 @@ class DestCache extends Map {
       // just remove temp file
       await this._safeUnlink(tmpFilename);
     } catch (err) {
-      if (err.code !== 'ENOENT') throw err;
+      if (err.code !== 'ENOENT' && err.code !== 'EPERM') throw err;
       // move temp file to new location
       await rename(tmpFilename, filename);
     }
