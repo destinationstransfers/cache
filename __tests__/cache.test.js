@@ -24,6 +24,7 @@ describe('basic cache functions', () => {
   const cachePath = path.join(__dirname, 'test-cache');
 
   beforeAll(() => {
+    jest.setTimeout(10000);
     // for debugging tests in VSCode Jest extension
     if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
   });
@@ -33,8 +34,10 @@ describe('basic cache functions', () => {
       console.warn('Deleting %s', cachePath);
       const removeDirCmd =
         process.platform === 'win32' ? 'rmdir /S /Q ' : 'rm -rf ';
-      if (process.platform === 'win32')
+      if (process.platform === 'win32') {
         execSync(`takeown /r /f "${cachePath}"`, console.error.bind(console));
+        execSync(`del /s "${cachePath}"`, console.error.bind(console));
+      }
       execSync(
         removeDirCmd + '"' + cachePath + '"',
         console.error.bind(console),
