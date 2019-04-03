@@ -246,6 +246,7 @@ describe('basic cache functions', () => {
     expect(res).toHaveProperty('path', filename);
     // test wrong size first
     writeFileSync(filename, 'byaka', 'utf8');
+    jest.spyOn(cache, 'delete');
     // get and consume stream
     /* eslint-disable no-empty */
     await expect(
@@ -254,8 +255,10 @@ describe('basic cache functions', () => {
         }
       })(),
     ).rejects.toHaveProperty('code', 'EBADSIZE');
-    // it must revove key after bad content found
+    // it must remove key after bad content found
+    expect(cache.delete).toHaveBeenCalledWith('key23');
     expect(cache.has('key23')).toBeFalsy();
+    // and remove the file
 
     // same size to avoid size mismatch
     await cache.set('key23', bigDataBuffer);
