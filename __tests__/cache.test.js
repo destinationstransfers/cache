@@ -36,7 +36,7 @@ describe('basic cache functions', () => {
   const cachePath = path.join(__dirname, 'test-cache');
 
   beforeAll(() => {
-    jest.setTimeout(10000);
+    jest.setTimeout(20000);
     // for debugging tests in VSCode Jest extension
     if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
   });
@@ -199,11 +199,13 @@ describe('basic cache functions', () => {
       require('assert').AssertionError,
     );
     // will try to create cache folder where there is a file in the middle
-    const cache2 = new Cache(path.join(cachePath, 'tmp', 'here'));
-    await expect(cache2.set('key3', bigDataBuffer)).rejects.toHaveProperty(
-      'code',
-      expect.stringMatching(/ENOTDIR|ENOENT|EPERM/),
-    );
+    if (process.platform !== 'win32') {
+      const cache2 = new Cache(path.join(cachePath, 'tmp', 'here'));
+      await expect(cache2.set('key3', bigDataBuffer)).rejects.toHaveProperty(
+        'code',
+        expect.stringMatching(/ENOTDIR|ENOENT|EPERM/),
+      );
+    }
   });
 
   test('must overwrite existing content with wrong sri', async () => {
