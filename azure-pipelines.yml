@@ -22,9 +22,9 @@ jobs:
         inputs:
           versionSpec: '11.x'
         displayName: 'Install Node.js'
-      - script: npm ci
+      - script: npm install --no-package-lock --no-optional
         # skip weak
-        displayName: 'npm install --no-package-lock --no-optional'
+        displayName: 'npm install'
       - script: node --expose-gc node_modules/jest/bin/jest --logHeapUsage --ci --reporters=default --reporters=jest-junit
         displayName: 'Run Jest'
 
