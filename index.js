@@ -122,10 +122,24 @@ class DestCache extends Map {
    * @param {string} file
    */
   async _safeUnlink(file) {
-    try {
-      await unlink(file);
-      // eslint-disable-next-line no-empty
-    } catch (err) {}
+    // will try 3 times
+    for (let i = 0; i < 3; i++) {
+      try {
+        await unlink(file);
+      } catch (err) {
+        // if not exist - return
+        if (err.code === 'ENOENT') return;
+        if (
+          err.code === 'EMFILE' ||
+          (err.code === 'EPERM' && process.platform === 'win32')
+        ) {
+          await new Promise(resolve => setTimeout(resolve, i * 1000));
+          continue;
+        }
+        // give up
+        break;
+      }
+    }
   }
 
   async persist() {
@@ -178,14 +192,14 @@ class DestCache extends Map {
       // write data to disk
       await writeFile(filename, data, { flag: 'wx' });
     } catch (err) {
-      if (err.code !== 'EEXIST' && err.code !== 'EPERM') throw err;
+      if (err.code !== 'EEXIST') throw err;
       // check that existing data is still valid?
       try {
         await ssri.checkStream(createReadStream(filename), integrity);
         super.set(key, entry);
         return entry;
       } catch (e) {
-        if (e.code !== 'EINTEGRITY' && e.code !== 'EPERM') throw err; // some other error happening
+        if (e.code !== 'EINTEGRITY') throw err; // some other error happening
         // overwrite invalid data
         await writeFile(filename, data);
       }
@@ -205,7 +219,7 @@ class DestCache extends Map {
     // get current integrity
     const entry = super.get(key);
     const res = super.delete(key);
-    if (!entry) return res;
+    if (!res) return res;
     await this._ensureCacheDirectory();
     await this.persist();
 
