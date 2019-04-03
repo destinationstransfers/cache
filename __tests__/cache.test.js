@@ -36,7 +36,7 @@ describe('basic cache functions', () => {
         process.platform === 'win32' ? 'rmdir /S /Q ' : 'rm -rf ';
       if (process.platform === 'win32') {
         execSync(`takeown /r /f "${cachePath}"`, console.error.bind(console));
-        execSync(`del /s "${cachePath}"`, console.error.bind(console));
+        execSync(`del /S /F /Q "${cachePath}\\*"`, console.error.bind(console));
       }
       execSync(
         removeDirCmd + '"' + cachePath + '"',
