@@ -10,7 +10,7 @@
     ],
     "extends": [
         "plugin:@destinationstransfers/recommended",
-        // "plugin:@typescript-eslint/recommended",
+        "plugin:@typescript-eslint/recommended",
         "prettier/@typescript-eslint"
     ],
     "env": {
@@ -43,10 +43,10 @@
                 "argsIgnorePattern": "^next$",
                 "caughtErrors": "none"
             }
-        ]
+        ],
         // requires project
-        // "@typescript-eslint/promise-function-async": "warn"
-        // "@typescript-eslint/no-for-in-array": "error",
+        "@typescript-eslint/promise-function-async": "error",
+        "@typescript-eslint/no-for-in-array": "error"
     },
     "overrides": [
         {
