@@ -19,6 +19,18 @@ const finished = promisify(stream.finished);
 // eslint-disable-next-line no-shadow
 const Cache = require('../');
 
+function removeDirTree(dirPath) {
+  // https://stackoverflow.com/questions/18052762/remove-directory-which-is-not-empty
+  console.warn('Deleting %s', dirPath);
+  const removeDirCmd =
+    process.platform === 'win32' ? 'rmdir /S /Q ' : 'rm -rf ';
+  if (process.platform === 'win32') {
+    execSync(`takeown /r /f "${dirPath}"`, console.error.bind(console));
+    execSync(`del /S /F /Q "${dirPath}\\*"`, console.error.bind(console));
+  }
+  execSync(removeDirCmd + '"' + dirPath + '"', console.error.bind(console));
+}
+
 describe('basic cache functions', () => {
   const bigDataBuffer = randomBytes(2048);
   const cachePath = path.join(__dirname, 'test-cache');
@@ -28,20 +40,11 @@ describe('basic cache functions', () => {
     // for debugging tests in VSCode Jest extension
     if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
   });
-  beforeEach(() => {
-    // https://stackoverflow.com/questions/18052762/remove-directory-which-is-not-empty
-    if (existsSync(cachePath)) {
-      console.warn('Deleting %s', cachePath);
-      const removeDirCmd =
-        process.platform === 'win32' ? 'rmdir /S /Q ' : 'rm -rf ';
-      if (process.platform === 'win32') {
-        execSync(`takeown /r /f "${cachePath}"`, console.error.bind(console));
-        execSync(`del /S /F /Q "${cachePath}\\*"`, console.error.bind(console));
-      }
-      execSync(
-        removeDirCmd + '"' + cachePath + '"',
-        console.error.bind(console),
-      );
+  beforeEach(async () => {
+    for (let i = 0; i < 3 && existsSync(cachePath); i++) {
+      // sleep
+      await new Promise(resolve => setTimeout(resolve, i * 1000));
+      removeDirTree(cachePath);
     }
     jest.restoreAllMocks();
   });
