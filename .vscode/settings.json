@@ -1,0 +1,7 @@
+{
+    "deepscan.enable": true,
+    "javascript.implicitProjectConfig.checkJs": true,
+    "javascript.referencesCodeLens.enabled": true,
+    "javascript.suggest.enabled": true,
+    "typescript.tsdk": "node_modules/typescript/lib"
+}

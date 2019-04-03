@@ -1,9 +1,9 @@
+/* eslint-disable sonarjs/no-identical-functions */
+/* eslint-disable no-sync */
 'use strict';
 
 const assert = require('assert');
 const path = require('path');
-const ssri = require('ssri');
-const stream = require('stream');
 const {
   mkdirSync,
   statSync,
@@ -20,8 +20,10 @@ const {
 } = require('fs').promises;
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
+const { Writable, Transform } = require('stream');
+const pipeline = promisify(require('stream').pipeline);
 
-const pipeline = promisify(stream.pipeline);
+const ssri = require('ssri');
 
 const INTEGRITY_ALGO = 'sha512';
 
@@ -45,6 +47,7 @@ class IntegrityError extends Error {
   constructor(msg) {
     super(msg);
     this.code = 'EINTEGRITY';
+    this.name = 'IntegrityError';
   }
 }
 
@@ -121,6 +124,7 @@ class DestCache extends Map {
   async _safeUnlink(file) {
     try {
       await unlink(file);
+      // eslint-disable-next-line no-empty
     } catch (err) {}
   }
 
@@ -289,7 +293,7 @@ class DestCache extends Map {
   /**
    *
    * @param {{ integrity?: import('ssri').Integrity, size?: number }} calcObj
-   * @returns {stream.Transform}
+   * @returns {import('stream').Transform}
    * @private
    */
   _getSsriCalcStream(calcObj) {
@@ -310,7 +314,7 @@ class DestCache extends Map {
    *
    * @param {string} key
    * @param {*} [metadata]
-   * @returns {stream.Writable}
+   * @returns {Writable}
    */
   getWriteStream(key, metadata = {}) {
     const tmpFile = this._getTmpFileWriteStream();
@@ -324,7 +328,7 @@ class DestCache extends Map {
       calcObj,
       metadata,
     );
-    return new stream.Writable({
+    return new Writable({
       write(chunk, enc, cb) {
         calcStream.write(chunk, enc, err => {
           if (err) throw err;
@@ -347,7 +351,7 @@ class DestCache extends Map {
    *
    * @param {string} key
    * @param {*} [metadata]
-   * @returns {stream.Writable}
+   * @returns {Writable}
    */
   createCachingStream(key, metadata) {
     const tmpFile = this._getTmpFileWriteStream();
@@ -361,13 +365,13 @@ class DestCache extends Map {
       calcObj,
       metadata,
     );
-    return new stream.Transform({
+    return new Transform({
       transform(chunk, enc, cb) {
         // this.push(chunk, enc);
         calcStream.write(chunk, enc, err => {
           if (err) throw err;
-          tmpFile.stream.write(chunk, enc, err => {
-            cb(err, chunk);
+          tmpFile.stream.write(chunk, enc, error => {
+            cb(error, chunk);
           });
         });
       },
@@ -386,7 +390,7 @@ class DestCache extends Map {
   /**
    *
    * @param {string} key
-   * @param {stream.Readable} stream
+   * @param {import('stream').Readable} stream
    * @param {*} metadata
    */
   async setStream(key, stream, metadata = {}) {
@@ -401,7 +405,7 @@ class DestCache extends Map {
   /**
    *
    * @param {string} key
-   * @returns {stream.Readable}
+   * @returns {import('stream').Readable}
    */
   getStream(key) {
     const entry = super.get(key);
