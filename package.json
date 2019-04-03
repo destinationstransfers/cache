@@ -36,10 +36,10 @@
     "@types/ssri": "6.0.0",
     "@typescript-eslint/eslint-plugin": "^1.6.0",
     "@typescript-eslint/parser": "^1.6.0",
+    "del": "^4.1.0",
     "eslint": "latest",
     "jest": "24.7.0",
     "jest-junit": "6.3.0",
-    "rimraf": "2.6.3",
     "stream-buffers": "3.0.2",
     "typescript": "3.4.1",
     "weak": "1.0.1"

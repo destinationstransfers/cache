@@ -11,7 +11,7 @@ const {
   WritableStreamBuffer,
 } = require('stream-buffers');
 const ssri = require('ssri');
-const rimraf = require('rimraf');
+const del = require('del');
 
 const pipeline = promisify(stream.pipeline);
 const finished = promisify(stream.finished);
@@ -27,8 +27,8 @@ describe('basic cache functions', () => {
     // for debugging tests in VSCode Jest extension
     if (process.env.CI === 'vscode-jest-tests') jest.setTimeout(10000000);
   });
-  beforeEach(() => {
-    rimraf.sync(cachePath);
+  beforeEach(async () => {
+    await del(cachePath);
     jest.restoreAllMocks();
   });
 
