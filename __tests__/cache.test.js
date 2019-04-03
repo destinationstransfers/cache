@@ -12,7 +12,6 @@ const {
   WritableStreamBuffer,
 } = require('stream-buffers');
 const ssri = require('ssri');
-const del = require('del');
 
 const pipeline = promisify(stream.pipeline);
 const finished = promisify(stream.finished);
