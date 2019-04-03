@@ -1,24 +1,26 @@
 'use strict';
 
 const path = require('path');
-const rimraf = require('rimraf');
-const ssri = require('ssri');
 const stream = require('stream');
-const {
-  ReadableStreamBuffer,
-  WritableStreamBuffer,
-} = require('stream-buffers');
 const { existsSync, writeFileSync, mkdirSync } = require('fs');
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
 
+const {
+  ReadableStreamBuffer,
+  WritableStreamBuffer,
+} = require('stream-buffers');
+const ssri = require('ssri');
+const rimraf = require('rimraf');
+
 const pipeline = promisify(stream.pipeline);
 const finished = promisify(stream.finished);
 
+// eslint-disable-next-line no-shadow
 const Cache = require('../');
 
 describe('basic cache functions', () => {
-  let bigDataBuffer = randomBytes(2048);
+  const bigDataBuffer = randomBytes(2048);
   const cachePath = path.join(__dirname, 'test-cache');
 
   beforeAll(() => {

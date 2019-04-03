@@ -20,7 +20,7 @@
         "noEmit": true,
         /* Module Resolution Options */
         "moduleResolution": "node",
-        "esModuleInterop": true,
+        "esModuleInterop": false,
     },
     "include": [
         "index.js"
