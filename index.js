@@ -192,7 +192,8 @@ class DestCache extends Map {
     // will try 4 times
     let lastError = '';
     let writeFlag = 'wx'; // fail if file exists
-    for (let i = 0; i < 4; i++)
+    let i = 0;
+    for (i; i < 5; i++)
       try {
         // write data to disk
         await writeFile(filename, data, { flag: writeFlag });
@@ -220,7 +221,7 @@ class DestCache extends Map {
 
     if (lastError)
       throw new Error(
-        `Failed to write key ${key} to ${filename}, error code: ${lastError}`,
+        `Failed to write key ${key} to ${filename}, error code: ${lastError}, retried ${i} times`,
       );
     super.set(key, entry);
     await this.persist();
