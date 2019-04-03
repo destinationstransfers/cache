@@ -165,7 +165,9 @@ describe('basic cache functions', () => {
       expect.objectContaining({
         time: expect.any(Number),
         size: bigDataBuffer.byteLength,
-        integrity: ssri.fromData(bigDataBuffer).toString(),
+        integrity: ssri
+          .fromData(bigDataBuffer, { algorithms: ['md5'] })
+          .toString(),
       }),
     );
   });
@@ -189,7 +191,7 @@ describe('basic cache functions', () => {
 
   test('must overwrite existing content with wrong sri', async () => {
     const cache = new Cache(cachePath);
-    const sri = ssri.fromData(bigDataBuffer);
+    const sri = ssri.fromData(bigDataBuffer, { algorithms: ['md5'] });
     const filename = path.join(cachePath, sri.hexDigest());
     await cache._ensureCacheDirectory();
     writeFileSync(filename, 'byaka', 'utf8');
@@ -208,7 +210,7 @@ describe('basic cache functions', () => {
     s1.stop();
 
     // create folder where we expect to move file
-    const sri = ssri.fromData(bigDataBuffer);
+    const sri = ssri.fromData(bigDataBuffer, { algorithms: ['md5'] });
     mkdirSync(path.join(cachePath, sri.hexDigest()), { recursive: true });
 
     await expect(cache.setStream('key2', s1)).rejects.toHaveProperty(
@@ -219,7 +221,7 @@ describe('basic cache functions', () => {
 
   test('getStream should throw if content failed integrity check', async () => {
     const cache = new Cache(cachePath);
-    const sri = ssri.fromData(bigDataBuffer);
+    const sri = ssri.fromData(bigDataBuffer, { algorithms: ['md5'] });
     const filename = path.join(cachePath, sri.hexDigest());
     const res = await cache.set('key23', bigDataBuffer);
     expect(res).toHaveProperty('path', filename);
@@ -302,7 +304,9 @@ describe('basic cache functions', () => {
       expect.objectContaining({
         time: expect.any(Number),
         size: bigDataBuffer.byteLength,
-        integrity: ssri.fromData(bigDataBuffer).toString(),
+        integrity: ssri
+          .fromData(bigDataBuffer, { algorithms: ['md5'] })
+          .toString(),
       }),
     );
 

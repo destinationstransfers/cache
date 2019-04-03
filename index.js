@@ -25,7 +25,7 @@ const pipeline = promisify(require('stream').pipeline);
 
 const ssri = require('ssri');
 
-const INTEGRITY_ALGO = 'sha512';
+const INTEGRITY_ALGO = 'md5';
 
 /**
    * @typedef {{
