@@ -28,6 +28,7 @@ jobs:
       - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default
         displayName: 'Run Jest'
       - script: 'npx codecov'
+        condition: succeededOrFailed()
         displayName: 'Upload to Codecov'
 
   - job: macOS
