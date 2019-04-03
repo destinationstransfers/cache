@@ -17,6 +17,7 @@ const {
   rename,
   mkdir,
   stat,
+  access,
 } = require('fs').promises;
 const { promisify } = require('util');
 const { randomBytes } = require('crypto');
@@ -275,15 +276,36 @@ class DestCache extends Map {
       time: Date.now(),
       metadata,
     };
+    // try 3 times
+    for (let i = 0; i < 3; i++) {
+      try {
+        // check if there is a valid file in place
+        await ssri.checkStream(
+          createReadStream(filename),
+          integrity.toString(),
+        );
+        // just remove temp file
+        await this._safeUnlink(tmpFilename);
+        break;
+      } catch (err) {
+        if (err.code === 'ENOENT') break;
+        if (process.platform === 'win32' && err.code === 'EPERM') {
+          await new Promise(resolve => setTimeout(resolve, i * 1000));
+          continue;
+        }
+        throw err;
+      }
+    }
+    // if temp file still exist that means we should move it to new location
     try {
-      // check if there is a valid file in place
-      await ssri.checkStream(createReadStream(filename), integrity.toString());
-      // just remove temp file
-      await this._safeUnlink(tmpFilename);
-    } catch (err) {
-      if (err.code !== 'ENOENT' && err.code !== 'EPERM') throw err;
       // move temp file to new location
       await rename(tmpFilename, filename);
+    } catch (err) {
+      if (err.code !== 'ENOENT') {
+        if (process.platform === 'win32') {
+          if (err.code !== 'EPERM') throw err;
+        } else throw err;
+      }
     }
     super.set(key, entry);
     await this.persist();
