@@ -169,7 +169,7 @@ class DestCache extends Map {
         super.set(key, entry);
         return entry;
       } catch (e) {
-        if (e.code !== 'EINTEGRITY') throw err; // some other error happening
+        if (e.code !== 'EINTEGRITY' && e.code !== 'EPERM') throw err; // some other error happening
         // overwrite invalid data
         await writeFile(filename, data);
       }
