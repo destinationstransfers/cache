@@ -5,12 +5,14 @@
 
 jobs:
   - job: Linux
+    variables:
+      publish: ${{ or(eq(parameters.config, 'release'), eq(variables['build.SourceBranchName'], 'master')) }}
     pool:
      vmImage: 'Ubuntu-16.04'
     steps:
       - template: azure-pipelines-steps.yml
       - ${{ if eq(variables.publish, 'true') }}:
-        - script: npm publish
+        - script: npm publish --access=public
 
   - job: Windows
     pool:
@@ -32,7 +34,6 @@ jobs:
       - template: azure-pipelines-steps.yml
 
 variables:
-  publish: ${{ or(eq(parameters.config, 'release'), eq(variables['build.SourceBranchName'], 'master')) }}
   # Used by chalk. Ensures output from Jest includes ANSI escape characters that are needed to match test snapshots.
   FORCE_COLOR: 1
 
