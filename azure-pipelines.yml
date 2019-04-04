@@ -13,6 +13,7 @@ jobs:
         condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
         inputs:
           command: publish
+          publishEndpoint: https://registry.npmjs.org
 
   - job: Windows
     pool:
