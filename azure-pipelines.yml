@@ -5,14 +5,12 @@
 
 jobs:
   - job: Linux
-    variables:
-      publish: ${{ or(eq(parameters.config, 'release'), eq(variables['build.SourceBranchName'], 'master')) }}
     pool:
      vmImage: 'Ubuntu-16.04'
     steps:
       - template: azure-pipelines-steps.yml
-      - ${{ if eq(variables.publish, 'true') }}:
-        - script: npm publish --access=public
+      - script: npm publish --access=public
+        condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
 
   - job: Windows
     pool:
@@ -33,9 +31,4 @@ jobs:
         displayName: 'Install Mercurial'
       - template: azure-pipelines-steps.yml
 
-variables:
-  # Used by chalk. Ensures output from Jest includes ANSI escape characters that are needed to match test snapshots.
-  FORCE_COLOR: 1
 
-  # Ensures the handful of tests that should be skipped during CI are
-  CI: true
