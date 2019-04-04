@@ -1,3 +1,4 @@
+/* eslint-disable max-depth */
 /* eslint-disable sonarjs/no-identical-functions */
 /* eslint-disable no-sync */
 'use strict';
@@ -65,9 +66,47 @@ class DestCache extends Map {
     if (persistent) {
       // reading previous state
       try {
+        /** @type {[string, CacheEntity][]} */
         const initState = require(path.resolve(cachePath, STATE_FILE_NAME));
         for (const [k, v] of initState) {
-          super.set(k, v);
+          // we will check at least existence and size
+          try {
+            const st = statSync(v.path);
+            if (!st.isFile()) {
+              console.error(
+                'Not restoring key %s because %s is not a file',
+                k,
+                v.path,
+              );
+              continue;
+            }
+            if (st.size !== v.size) {
+              console.error(
+                'Not restoring key %s due to %s size difference: %d != %d',
+                k,
+                v.path,
+                st.size,
+                v.size,
+              );
+            }
+            // if creation time is more than 1 seconds different from our time
+            if (st.ctimeMs - v.time > 1000) {
+              console.log(
+                'Not restoring key %s due to %s time difference: %d',
+                k,
+                v.path,
+                st.ctimeMs - v.time,
+              );
+              continue;
+            }
+            super.set(k, v);
+          } catch (err) {
+            console.error(
+              'Not restoring cache key %s due to file %s access failure',
+              k,
+              v.path,
+            );
+          }
         }
         // eslint-disable-next-line no-empty
       } catch (err) {}
