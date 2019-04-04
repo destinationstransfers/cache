@@ -13,7 +13,7 @@ steps:
 - script: npm test -- --ci --reporters=default --reporters=jest-junit
   displayName: 'Run Jest'
 
-- script: bash <(curl -s https://codecov.io/bash) -cF bash -f "./coverage/coverage-final.json" -y "./.codecov.yml" -t $(CODECOV_TOKEN)
+- script: npx codecov -f "./coverage/coverage-final.json" -y "./.codecov.yml" -t $(CODECOV_TOKEN)
   displayName: 'Upload to Codecov'
 
 - task: PublishTestResults@2

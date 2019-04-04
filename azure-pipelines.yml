@@ -18,17 +18,7 @@ jobs:
           git config --global core.autocrlf false
           git config --global core.symlinks true
         displayName: 'Preserve LF endings and symbolic links on check out'
-      - task: NodeTool@0
-        inputs:
-          versionSpec: '11.x'
-        displayName: 'Install Node.js'
-      - script: npm install --no-package-lock --no-optional
-        # skip weak
-        displayName: 'npm install'
-      - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default --coverage
-        displayName: 'Run Jest'
-      - script: npx codecov -f "./coverage/coverage-final.json" -y "./.codecov.yml" --disable=gcov -t $(CODECOV_TOKEN)
-        displayName: 'Upload to Codecov'
+      - template: azure-pipelines-steps.yml
 
   - job: macOS
     pool:
