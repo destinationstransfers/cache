@@ -27,7 +27,7 @@ jobs:
         displayName: 'npm install'
       - script: node --expose-gc node_modules/jest/bin/jest --runInBand --logHeapUsage --ci --reporters=default --coverage
         displayName: 'Run Jest'
-      - script: npx codecov -f "./coverage/coverage-final.json" -y "./.codecov.yml" --disable=gcov -t $(CODECOV_TOKEN)
+      - script: npx codecov -f "./coverage/coverage-final.json" -y "./.codecov.yml" --disable=gcov -t $(CODECOV_TOKEN) -cF windows
         displayName: 'Upload to Codecov'
 
   - job: macOS
