@@ -1,5 +1,6 @@
 steps:
 - use: npm
+  auth: MyGetFeedNpm
 - task: NodeTool@0
   inputs:
     versionSpec: '11.x'
