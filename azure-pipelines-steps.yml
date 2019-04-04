@@ -1,4 +1,5 @@
 steps:
+- use: npm
 - task: NodeTool@0
   inputs:
     versionSpec: '11.x'
