@@ -89,8 +89,8 @@ class DestCache extends Map {
                 v.size,
               );
             }
-            // if last modified time is more than 10 seconds different from our time
-            if (st.ctimeMs - v.time > 10) {
+            // if creation time is more than 1 seconds different from our time
+            if (st.ctimeMs - v.time > 1000) {
               console.log(
                 'Not restoring key %s due to %s time difference: %d',
                 k,
