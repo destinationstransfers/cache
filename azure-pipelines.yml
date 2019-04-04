@@ -8,11 +8,11 @@ jobs:
     pool:
      vmImage: 'Ubuntu-16.04'
     steps:
-      - use: npm
-        auth: MyGetFeedNpm
       - template: azure-pipelines-steps.yml
-      - script: npm publish --access=public
+      - task: Npm@1
         condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+        inputs:
+          command: publish
 
   - job: Windows
     pool:
