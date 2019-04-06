@@ -215,17 +215,15 @@ class DestCache extends Map {
   // @ts-ignore
   async set(key, data, metadata = {}) {
     await this._ensureCacheDirectory();
+    const buffer = typeof data === 'string' ? Buffer.from(data, 'utf8') : data;
 
-    const integrity = ssri.fromData(data, { algorithms: [INTEGRITY_ALGO] });
+    const integrity = ssri.fromData(buffer, { algorithms: [INTEGRITY_ALGO] });
     // store to disk
     const filename = path.join(this.cachePath, integrity.hexDigest());
     /** @type {CacheEntity} */
     const entry = {
       path: filename,
-      size:
-        typeof data === 'string'
-          ? Buffer.from(data, 'utf8').byteLength
-          : data.byteLength,
+      size: buffer.byteLength,
       integrity: integrity.toString(),
       time: Date.now(),
       metadata,
@@ -238,7 +236,7 @@ class DestCache extends Map {
     for (i; i < 6; i++)
       try {
         // write data to disk
-        await writeFile(filename, data, { flag: writeFlag });
+        await writeFile(filename, buffer, { flag: writeFlag });
         lastError = '';
         break;
       } catch (err) {
@@ -297,7 +295,7 @@ class DestCache extends Map {
   /**
    *
    * @param {string} key
-   * @returns {Promise.<Buffer | undefined>}
+   * @returns {Promise.<Buffer>}
    */
   // @ts-ignore
   async get(key) {
