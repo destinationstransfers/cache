@@ -222,7 +222,10 @@ class DestCache extends Map {
     /** @type {CacheEntity} */
     const entry = {
       path: filename,
-      size: data.length,
+      size:
+        typeof data === 'string'
+          ? Buffer.from(data, 'utf8').byteLength
+          : data.byteLength,
       integrity: integrity.toString(),
       time: Date.now(),
       metadata,
