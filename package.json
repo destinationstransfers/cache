@@ -41,7 +41,7 @@
     "jest": "24.7.1",
     "jest-junit": "6.3.0",
     "stream-buffers": "3.0.2",
-    "typescript": "3.4.1"
+    "typescript": "3.4.5"
   },
   "jest": {
     "collectCoverage": true,
