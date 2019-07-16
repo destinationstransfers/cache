@@ -31,7 +31,7 @@
   },
   "devDependencies": {
     "weak": "1.0.1",
-    "@destinationstransfers/eslint-plugin": "2.4.29",
+    "@destinationstransfers/eslint-plugin": "2.5.46",
     "@types/jest": "24.0.12",
     "@types/node": "11.13.17",
     "@types/ssri": "6.0.1",
