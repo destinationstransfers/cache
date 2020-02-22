@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/destinationstransfers/cache#readme",
   "dependencies": {
-    "ssri": "^7.0.0"
+    "ssri": "^8.0.0"
   },
   "devDependencies": {
     "weak": "1.0.1",
